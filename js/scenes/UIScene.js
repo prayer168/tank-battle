@@ -15,11 +15,33 @@ class UIScene extends Phaser.Scene {
     this.levelLabel = this.add.text(W/2, 10, '關卡', { fontSize:'13px', fontFamily:'Arial', color:'#aaaaaa' }).setOrigin(0.5, 0);
     this.levelText  = this.add.text(W/2, 26, '1',   { fontSize:'20px', fontFamily:'Arial Black', color:'#ffffff' }).setOrigin(0.5, 0);
 
-    this.livesLabel  = this.add.text(W - 120, 10, '生命', { fontSize:'13px', fontFamily:'Arial', color:'#aaaaaa' });
-    this.livesText   = this.add.text(W - 120, 26, '♥ ♥ ♥', { fontSize:'17px', fontFamily:'Arial', color:'#ff4444' });
+    this.livesLabel  = this.add.text(W/2 + 80, 10, '生命', { fontSize:'13px', fontFamily:'Arial', color:'#aaaaaa' });
+    this.livesText   = this.add.text(W/2 + 80, 26, '♥ ♥ ♥', { fontSize:'17px', fontFamily:'Arial', color:'#ff4444' });
 
-    this.enemiesLabel = this.add.text(W - 16, 10, '敵人', { fontSize:'13px', fontFamily:'Arial', color:'#aaaaaa' }).setOrigin(1, 0);
-    this.enemiesText  = this.add.text(W - 16, 26, '0',   { fontSize:'20px', fontFamily:'Arial Black', color:'#ff8844' }).setOrigin(1, 0);
+    this.enemiesLabel = this.add.text(W/2 + 200, 10, '敵人', { fontSize:'13px', fontFamily:'Arial', color:'#aaaaaa' });
+    this.enemiesText  = this.add.text(W/2 + 200, 26, '0',   { fontSize:'20px', fontFamily:'Arial Black', color:'#ff8844' });
+
+    // In-game sound toggles
+    this._sfxOn   = true;
+    this._musicOn = true;
+
+    this.sfxBtn = this.add.text(W - 8, 12, '🔊', {
+      fontSize: '18px', fontFamily: 'Arial',
+    }).setOrigin(1, 0).setInteractive({ useHandCursor: true }).setAlpha(0.7);
+    this.sfxBtn.on('pointerdown', () => {
+      Sound.resume();
+      this._sfxOn = Sound.toggleSFX();
+      this.sfxBtn.setText(this._sfxOn ? '🔊' : '🔕');
+    });
+
+    this.musicBtn = this.add.text(W - 36, 12, '🎵', {
+      fontSize: '18px', fontFamily: 'Arial',
+    }).setOrigin(1, 0).setInteractive({ useHandCursor: true }).setAlpha(0.7);
+    this.musicBtn.on('pointerdown', () => {
+      Sound.resume();
+      this._musicOn = Sound.toggleMusic();
+      this.musicBtn.setText(this._musicOn ? '🎵' : '🔇');
+    });
 
     // Listen to game scene events
     const gameScene = this.scene.get('GameScene');

@@ -2,6 +2,7 @@ class SoundManager {
   constructor() {
     this.enabled = true;
     this.musicEnabled = true;
+    this.sfxEnabled = true;
     this._bgmRunning = false;
     this._bgmLoopTimeout = null;
     this._bgmStep = 0;
@@ -165,13 +166,19 @@ class SoundManager {
   toggleMusic() {
     this.musicEnabled = !this.musicEnabled;
     if (this.musicEnabled) {
+      this.bgmGain.gain.setTargetAtTime(0.22, this.ctx.currentTime, 0.3);
       this.startBGM();
     } else {
       this.stopBGM();
-      // Fade out
       this.bgmGain.gain.setTargetAtTime(0, this.ctx.currentTime, 0.3);
     }
     return this.musicEnabled;
+  }
+
+  toggleSFX() {
+    this.sfxEnabled = !this.sfxEnabled;
+    this.sfxGain.gain.setTargetAtTime(this.sfxEnabled ? 1.0 : 0, this.ctx.currentTime, 0.1);
+    return this.sfxEnabled;
   }
 
   _loopMelody() {

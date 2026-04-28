@@ -61,13 +61,23 @@ class MenuScene extends Phaser.Scene {
     });
 
     // Music toggle
-    const musicBtn = this.add.text(W - 16, H - 32, '🎵 音樂：開', {
+    const musicBtn = this.add.text(W - 16, H - 56, '🎵 音樂：開', {
       fontSize: '15px', fontFamily: 'Arial', color: '#888888',
     }).setOrigin(1, 0.5).setInteractive({ useHandCursor: true });
     musicBtn.on('pointerdown', () => {
       Sound.resume();
       const on = Sound.toggleMusic();
       musicBtn.setText(on ? '🎵 音樂：開' : '🔇 音樂：關');
+    });
+
+    // SFX toggle
+    const sfxBtn = this.add.text(W - 16, H - 32, '🔊 音效：開', {
+      fontSize: '15px', fontFamily: 'Arial', color: '#888888',
+    }).setOrigin(1, 0.5).setInteractive({ useHandCursor: true });
+    sfxBtn.on('pointerdown', () => {
+      Sound.resume();
+      const on = Sound.toggleSFX();
+      sfxBtn.setText(on ? '🔊 音效：開' : '🔕 音效：關');
     });
 
     this.scoreboardGroup = null;

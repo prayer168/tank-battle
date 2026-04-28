@@ -68,25 +68,16 @@ class PlayerTank extends Phaser.Physics.Arcade.Sprite {
   }
 
   update(cursors, spaceKey, time, bullets) {
-    let moving = false;
+    // JustDown tracks the LAST key pressed so turning always works,
+    // even when another direction key is still held down.
+    const JD = Phaser.Input.Keyboard.JustDown;
+    if (JD(cursors.up))    { this._changeDir(DIR.UP);    }
+    if (JD(cursors.down))  { this._changeDir(DIR.DOWN);  }
+    if (JD(cursors.left))  { this._changeDir(DIR.LEFT);  }
+    if (JD(cursors.right)) { this._changeDir(DIR.RIGHT); }
 
-    if (cursors.up.isDown) {
-      if (this.direction !== DIR.UP) { this._snapToGrid(DIR.UP); }
-      this.direction = DIR.UP;
-      moving = true;
-    } else if (cursors.down.isDown) {
-      if (this.direction !== DIR.DOWN) { this._snapToGrid(DIR.DOWN); }
-      this.direction = DIR.DOWN;
-      moving = true;
-    } else if (cursors.left.isDown) {
-      if (this.direction !== DIR.LEFT) { this._snapToGrid(DIR.LEFT); }
-      this.direction = DIR.LEFT;
-      moving = true;
-    } else if (cursors.right.isDown) {
-      if (this.direction !== DIR.RIGHT) { this._snapToGrid(DIR.RIGHT); }
-      this.direction = DIR.RIGHT;
-      moving = true;
-    }
+    const moving = cursors.up.isDown || cursors.down.isDown ||
+                   cursors.left.isDown || cursors.right.isDown;
 
     this.setAngle(DIR_ANGLE[this.direction]);
 
@@ -107,6 +98,11 @@ class PlayerTank extends Phaser.Physics.Arcade.Sprite {
     if (this.shieldSprite) {
       this.shieldSprite.setPosition(this.x, this.y);
     }
+  }
+
+  _changeDir(newDir) {
+    if (this.direction !== newDir) { this._snapToGrid(newDir); }
+    this.direction = newDir;
   }
 
   _snapToGrid(newDir) {
