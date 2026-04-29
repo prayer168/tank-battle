@@ -26,8 +26,9 @@ class GameScene extends Phaser.Scene {
     this._setupInput();
     this._setupPowerUpTimer();
 
-    this.enemiesRemaining = this.levelConfig.enemies;
-    this.spawnQueue = this.levelConfig.enemies;
+    this.totalEnemies    = this.levelConfig.enemies; // 本關總敵人數
+    this.killCount       = 0;                        // 已擊殺數
+    this.spawnQueue      = this.levelConfig.enemies; // 待生成數
     this._spawnEnemyWave();
 
     this.scene.launch('UIScene');
@@ -36,7 +37,11 @@ class GameScene extends Phaser.Scene {
     this._gameOver = false;
     this._levelDone = false;
 
-    this.events.emit('hud-update', { score: this.score, lives: this.lives, level: this.currentLevel, enemies: this.enemiesRemaining });
+    this.events.emit('hud-update', {
+      score: this.score, lives: this.lives,
+      level: this.currentLevel,
+      enemies: this.totalEnemies - this.killCount,
+    });
   }
 
   // ─── Map Building ───────────────────────────────────────────────────
@@ -312,17 +317,20 @@ class GameScene extends Phaser.Scene {
   }
 
   _bombClearEnemies() {
-    this.enemies.getChildren().slice().forEach(e => {
-      if (e.active) {
-        this._spawnExplosion(e.x, e.y, true);
-        this.score += ENEMY_SCORE * this.currentLevel;
-        e.destroy();
-        this.enemiesRemaining--;
-      }
+    const alive = this.enemies.getChildren().filter(e => e.active);
+    alive.forEach(e => {
+      this._spawnExplosion(e.x, e.y, true);
+      this.score += ENEMY_SCORE * this.currentLevel;
+      this.killCount++;
+      e.destroy();
     });
+    // 炸彈清空剩餘生成佇列
+    this.killCount  = this.totalEnemies;
     this.spawnQueue = 0;
-    this.enemiesRemaining = 0;
-    this.events.emit('hud-update', { score: this.score, lives: this.lives, level: this.currentLevel, enemies: this.enemiesRemaining });
+    this.events.emit('hud-update', {
+      score: this.score, lives: this.lives,
+      level: this.currentLevel, enemies: 0,
+    });
     this._checkWin();
   }
 
@@ -351,11 +359,16 @@ class GameScene extends Phaser.Scene {
     if (!enemy.active) return;
     this._spawnExplosion(enemy.x, enemy.y, true);
     this.score += ENEMY_SCORE * this.currentLevel;
-    this.enemiesRemaining--;
+    this.killCount++;
     enemy.destroy();
-    this.events.emit('hud-update', { score: this.score, lives: this.lives, level: this.currentLevel, enemies: this.enemiesRemaining });
+    this.events.emit('hud-update', {
+      score: this.score, lives: this.lives,
+      level: this.currentLevel,
+      enemies: Math.max(0, this.totalEnemies - this.killCount),
+    });
+    // 先檢查勝利（避免殺完最後一隻又補生新敵人）
+    if (this._checkWin()) return;
     this._trySpawnMoreEnemies();
-    this._checkWin();
   }
 
   _destroyBrick(brick) {
@@ -364,13 +377,15 @@ class GameScene extends Phaser.Scene {
     brick.destroy();
   }
 
+  // 回傳 true 表示已過關（供 _killEnemy 提前返回）
   _checkWin() {
-    if (this._levelDone || this._gameOver) return;
-    const activeEnemies = this.enemies.getChildren().filter(e => e.active).length;
-    if (activeEnemies === 0 && this.spawnQueue <= 0 && this.enemiesRemaining <= 0) {
+    if (this._levelDone || this._gameOver) return false;
+    if (this.killCount >= this.totalEnemies) {
       this._levelDone = true;
       this.time.delayedCall(800, () => this._triggerLevelClear());
+      return true;
     }
+    return false;
   }
 
   _triggerLevelClear() {
