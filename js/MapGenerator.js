@@ -19,9 +19,25 @@ class MapGenerator {
       }
     }
 
-    // Clear player spawn: bottom-left interior
-    this._clearZone(map, 1, MAP_ROWS - 3, 3, 2);
-    // Clear enemy spawns: top-left, top-center, top-right
+    // ── 玩家出生區：左下方 5×4 格，確保有足夠活動空間
+    this._clearZone(map, 1, MAP_ROWS - 5, 5, 4);
+
+    // ── 強制清空最後一條內部橫道（row = MAP_ROWS-2），確保底部可左右移動
+    //    只移除磚牆/水域/草叢，保留鋼牆（鋼牆視覺效果保留，但阻擋依然存在）
+    for (let c = 1; c < MAP_COLS - 1; c++) {
+      if (map[MAP_ROWS - 2][c] !== TILE.STEEL) {
+        map[MAP_ROWS - 2][c] = TILE.EMPTY;
+      }
+    }
+
+    // ── 強制清空最後第二條內部橫道（row = MAP_ROWS-3），避免玩家從下方被完全封死
+    for (let c = 1; c < MAP_COLS - 1; c++) {
+      if (map[MAP_ROWS - 3][c] !== TILE.STEEL) {
+        map[MAP_ROWS - 3][c] = TILE.EMPTY;
+      }
+    }
+
+    // ── 敵人出生區：頂部三處各 3×2
     this._clearZone(map, 1, 1, 3, 2);
     this._clearZone(map, Math.floor(MAP_COLS / 2) - 1, 1, 3, 2);
     this._clearZone(map, MAP_COLS - 4, 1, 3, 2);
