@@ -6,7 +6,7 @@ class PlayerTank extends Phaser.Physics.Arcade.Sprite {
 
     this.setDepth(1);
     this.body.setSize(26, 26);
-    this.setCollideWorldBounds(true);
+    // 不使用 worldBounds，邊界鋼墻已阻擋坦克，避免雙重碰撞卡角
 
     this.direction = DIR.UP;
     this.setAngle(DIR_ANGLE[DIR.UP]);
@@ -106,12 +106,18 @@ class PlayerTank extends Phaser.Physics.Arcade.Sprite {
   }
 
   _snapToGrid(newDir) {
-    // Align perpendicular axis to grid when changing direction
+    // 轉彎時對齊格子中心，並鉗制在內部範圍（避免吸附進邊界鋼牆）
     if (newDir === DIR.UP || newDir === DIR.DOWN) {
-      const col = Math.round((this.x - TILE_SIZE / 2) / TILE_SIZE);
+      const col = Phaser.Math.Clamp(
+        Math.round((this.x - TILE_SIZE / 2) / TILE_SIZE),
+        1, MAP_COLS - 2
+      );
       this.x = col * TILE_SIZE + TILE_SIZE / 2;
     } else {
-      const row = Math.round((this.y - HUD_HEIGHT - TILE_SIZE / 2) / TILE_SIZE);
+      const row = Phaser.Math.Clamp(
+        Math.round((this.y - HUD_HEIGHT - TILE_SIZE / 2) / TILE_SIZE),
+        1, MAP_ROWS - 2
+      );
       this.y = row * TILE_SIZE + TILE_SIZE / 2 + HUD_HEIGHT;
     }
   }

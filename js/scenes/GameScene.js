@@ -17,7 +17,11 @@ class GameScene extends Phaser.Scene {
     this.mapGen  = new MapGenerator();
     this.mapData = this.mapGen.generate(this.levelConfig);
 
-    this.physics.world.setBounds(0, HUD_HEIGHT, GAME_WIDTH, GAME_HEIGHT - HUD_HEIGHT);
+    // 物理世界邊界設為內部區域（去除邊框鋼墻寬度），避免 worldBounds 與鋼墻物理體雙重衝突
+    this.physics.world.setBounds(
+      TILE_SIZE, HUD_HEIGHT + TILE_SIZE,
+      GAME_WIDTH - 2 * TILE_SIZE, GAME_HEIGHT - HUD_HEIGHT - 2 * TILE_SIZE
+    );
 
     this._buildMap();
     this._createGroups();

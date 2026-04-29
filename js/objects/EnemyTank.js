@@ -7,7 +7,7 @@ class EnemyTank extends Phaser.Physics.Arcade.Sprite {
 
     this.setDepth(1);
     this.body.setSize(26, 26);
-    this.setCollideWorldBounds(true);
+    // 不使用 worldBounds，邊界鋼墻已阻擋，避免卡角
 
     this.speed       = config.speed;
     this.bulletSpeed = config.bulletSpeed;
@@ -30,13 +30,14 @@ class EnemyTank extends Phaser.Physics.Arcade.Sprite {
   update(time, delta, mapData, player, bullets) {
     if (!this.active) return;
 
-    // Stuck detection
+    // 卡住偵測：每 400ms 檢查一次位移，幾乎沒動則強制重選目標
     this.stuckTimer += delta;
-    if (this.stuckTimer > 600) {
+    if (this.stuckTimer > 400) {
       const dx = this.x - this.lastX;
       const dy = this.y - this.lastY;
-      if (Math.abs(dx) < 2 && Math.abs(dy) < 2) {
-        this.hasTarget = false; // force re-pick
+      if (Math.abs(dx) < 1.5 && Math.abs(dy) < 1.5) {
+        this.hasTarget = false;
+        this.setVelocity(0, 0);
       }
       this.lastX = this.x;
       this.lastY = this.y;
@@ -127,6 +128,29 @@ class EnemyTank extends Phaser.Physics.Arcade.Sprite {
       const cell = mapData[nr][nc];
       if (cell === TILE.STEEL || cell === TILE.WATER) continue;
       return [nr, nc];
+    }
+    // 四方都被封住（孤立區域）→ 在地圖上掃描最近的可通行格子
+    return this._findNearestOpenTile(mapData, row, col);
+  }
+
+  _findNearestOpenTile(mapData, row, col) {
+    // BFS 找最近開放格（忽略牆壁限制，允許穿越磚牆）
+    const visited = new Set([`${row},${col}`]);
+    const queue = [[row, col]];
+    const dirs = [[-1,0],[1,0],[0,-1],[0,1]];
+    while (queue.length) {
+      const [r, c] = queue.shift();
+      for (const [dr, dc] of dirs) {
+        const nr = r + dr, nc = c + dc;
+        if (nr < 1 || nr >= MAP_ROWS-1 || nc < 1 || nc >= MAP_COLS-1) continue;
+        const key = `${nr},${nc}`;
+        if (visited.has(key)) continue;
+        visited.add(key);
+        if (mapData[nr][nc] !== TILE.STEEL && mapData[nr][nc] !== TILE.WATER) {
+          return [nr, nc];
+        }
+        queue.push([nr, nc]);
+      }
     }
     return null;
   }
