@@ -204,11 +204,9 @@
 
   _setupPlayerCollisions() {
     if (!this.player || !this.player.active) return;
-    this.physics.add.collider(this.player, this.brickGroup);
-    this.physics.add.collider(this.player, this.steelGroup);
-    this.physics.add.collider(this.player, this.waterGroup);
-    this.physics.add.collider(this.player, this.enemies);
-    this.physics.add.overlap(this.enemyBullets, this.player, (bullet, player) => {
+    // Terrain colliders removed: tile-by-tile movement already blocks illegal moves.
+    // Physics colliders against walls cause body drift that locks the tank.
+    this.physics.add.overlap(this.enemyBullets, this.player, (bullet) => {
       bullet.destroy();
       this._hitPlayer();
     });
@@ -455,4 +453,5 @@
     });
   }
 }
+
 

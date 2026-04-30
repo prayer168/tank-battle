@@ -1,4 +1,4 @@
-class MapGenerator {
+﻿class MapGenerator {
   generate(levelConfig) {
     const { brickDensity, steelDensity } = levelConfig;
     const map = [];
@@ -19,25 +19,22 @@ class MapGenerator {
       }
     }
 
-    // ── 玩家出生區：左下方 5×4 格，確保有足夠活動空間
-    this._clearZone(map, 1, MAP_ROWS - 5, 5, 4);
+    // ?? ?拙振?箇??嚗椰銝 5?4 ?潘?蝣箔??雲憭暑?征??    this._clearZone(map, 1, MAP_ROWS - 5, 5, 4);
 
-    // ── 強制清空最後一條內部橫道（row = MAP_ROWS-2），確保底部可左右移動
-    //    只移除磚牆/水域/草叢，保留鋼牆（鋼牆視覺效果保留，但阻擋依然存在）
-    for (let c = 1; c < MAP_COLS - 1; c++) {
+    // ?? 撘瑕皜征?敺?璇?冽帖??row = MAP_ROWS-2嚗?蝣箔?摨?臬椰?喟宏??    //    ?芰宏?斤???瘞游?/?嚗?????潛?閬死??靽?嚗??餅?靘摮嚗?    for (let c = 1; c < MAP_COLS - 1; c++) {
       if (map[MAP_ROWS - 2][c] !== TILE.STEEL) {
         map[MAP_ROWS - 2][c] = TILE.EMPTY;
       }
     }
 
-    // ── 強制清空最後第二條內部橫道（row = MAP_ROWS-3），避免玩家從下方被完全封死
+    // ?? 撘瑕皜征?敺洵鈭??折璈恍?嚗ow = MAP_ROWS-3嚗??踹??拙振敺??寡◤摰撠香
     for (let c = 1; c < MAP_COLS - 1; c++) {
       if (map[MAP_ROWS - 3][c] !== TILE.STEEL) {
         map[MAP_ROWS - 3][c] = TILE.EMPTY;
       }
     }
 
-    // ── 敵人出生區：頂部三處各 3×2
+    // ?? ?萎犖?箇??嚗??其??? 3?2
     this._clearZone(map, 1, 1, 3, 2);
     this._clearZone(map, Math.floor(MAP_COLS / 2) - 1, 1, 3, 2);
     this._clearZone(map, MAP_COLS - 4, 1, 3, 2);
@@ -69,3 +66,4 @@ class MapGenerator {
     };
   }
 }
+
