@@ -1,4 +1,4 @@
-class PlayerTank extends Phaser.Physics.Arcade.Sprite {
+﻿class PlayerTank extends Phaser.Physics.Arcade.Sprite {
   constructor(scene, x, y) {
     super(scene, x, y, 'tank_player');
     scene.add.existing(this);
@@ -6,7 +6,6 @@ class PlayerTank extends Phaser.Physics.Arcade.Sprite {
 
     this.setDepth(1);
     this.body.setSize(26, 26);
-    // 不使用 worldBounds，邊界鋼墻已阻擋坦克，避免雙重碰撞卡角
 
     this.direction = DIR.UP;
     this.setAngle(DIR_ANGLE[DIR.UP]);
@@ -68,25 +67,27 @@ class PlayerTank extends Phaser.Physics.Arcade.Sprite {
   }
 
   update(cursors, spaceKey, time, bullets) {
-    // JustDown tracks the LAST key pressed so turning always works,
-    // even when another direction key is still held down.
-    const JD = Phaser.Input.Keyboard.JustDown;
-    if (JD(cursors.up))    { this._changeDir(DIR.UP);    }
-    if (JD(cursors.down))  { this._changeDir(DIR.DOWN);  }
-    if (JD(cursors.left))  { this._changeDir(DIR.LEFT);  }
-    if (JD(cursors.right)) { this._changeDir(DIR.RIGHT); }
+    // Always respond to the most-recently-pressed direction key that is still held.
+    // This avoids JustDown edge-cases and ensures any key press is acted on.
+    let bestDir = null;
+    let bestTime = -1;
+    if (cursors.up.isDown    && cursors.up.timeDown    > bestTime) { bestTime = cursors.up.timeDown;    bestDir = DIR.UP;    }
+    if (cursors.down.isDown  && cursors.down.timeDown  > bestTime) { bestTime = cursors.down.timeDown;  bestDir = DIR.DOWN;  }
+    if (cursors.left.isDown  && cursors.left.timeDown  > bestTime) { bestTime = cursors.left.timeDown;  bestDir = DIR.LEFT;  }
+    if (cursors.right.isDown && cursors.right.timeDown > bestTime) { bestTime = cursors.right.timeDown; bestDir = DIR.RIGHT; }
 
-    const moving = cursors.up.isDown || cursors.down.isDown ||
-                   cursors.left.isDown || cursors.right.isDown;
-
-    this.setAngle(DIR_ANGLE[this.direction]);
-
-    if (moving) {
+    if (bestDir !== null) {
+      if (bestDir !== this.direction) {
+        this._snapToGrid(bestDir);
+        this.direction = bestDir;
+      }
+      this.setAngle(DIR_ANGLE[this.direction]);
       this.setVelocity(
         DIR_VX[this.direction] * this.speed,
         DIR_VY[this.direction] * this.speed
       );
     } else {
+      this.setAngle(DIR_ANGLE[this.direction]);
       this.setVelocity(0, 0);
     }
 
@@ -94,28 +95,23 @@ class PlayerTank extends Phaser.Physics.Arcade.Sprite {
       this.tryShoot(time, bullets);
     }
 
-    // Update shield sprite position
     if (this.shieldSprite) {
       this.shieldSprite.setPosition(this.x, this.y);
     }
   }
 
-  _changeDir(newDir) {
-    if (this.direction !== newDir) { this._snapToGrid(newDir); }
-    this.direction = newDir;
-  }
-
   _snapToGrid(newDir) {
-    // 轉彎時對齊格子中心，並鉗制在內部範圍（避免吸附進邊界鋼牆）
+    // Use Math.floor so the snap always lands inside the tile the tank is currently
+    // occupying, never jumping forward into an adjacent wall tile.
     if (newDir === DIR.UP || newDir === DIR.DOWN) {
       const col = Phaser.Math.Clamp(
-        Math.round((this.x - TILE_SIZE / 2) / TILE_SIZE),
+        Math.floor(this.x / TILE_SIZE),
         1, MAP_COLS - 2
       );
       this.x = col * TILE_SIZE + TILE_SIZE / 2;
     } else {
       const row = Phaser.Math.Clamp(
-        Math.round((this.y - HUD_HEIGHT - TILE_SIZE / 2) / TILE_SIZE),
+        Math.floor((this.y - HUD_HEIGHT) / TILE_SIZE),
         1, MAP_ROWS - 2
       );
       this.y = row * TILE_SIZE + TILE_SIZE / 2 + HUD_HEIGHT;
@@ -123,8 +119,8 @@ class PlayerTank extends Phaser.Physics.Arcade.Sprite {
   }
 
   takeDamage() {
-    if (this.shieldActive) return false; // blocked
-    return true; // player is hit
+    if (this.shieldActive) return false;
+    return true;
   }
 
   destroy(fromScene) {
