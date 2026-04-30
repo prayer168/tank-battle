@@ -1,15 +1,12 @@
-﻿class PlayerTank extends Phaser.Physics.Arcade.Sprite {
+class PlayerTank extends Phaser.Physics.Arcade.Sprite {
   constructor(scene, x, y) {
     super(scene, x, y, 'tank_player');
     scene.add.existing(this);
     scene.physics.add.existing(this);
-
     this.setDepth(1);
     this.body.setSize(26, 26);
-
     this.direction = DIR.UP;
     this.setAngle(DIR_ANGLE[DIR.UP]);
-
     this.speed = PLAYER_SPEED;
     this.lastFired = 0;
     this.shieldActive = false;
@@ -17,11 +14,9 @@
     this.speedActive = false;
     this.speedTimer = null;
     this.shieldSprite = null;
-
     this.targetX = x;
     this.targetY = y;
     this.hasTarget = false;
-
     this._createShieldSprite(scene);
   }
 
@@ -59,6 +54,7 @@
     const bx = this.x + DIR_VX[this.direction] * offset;
     const by = this.y + DIR_VY[this.direction] * offset;
     const bullet = bullets.create(bx, by, 'bullet');
+    if (!bullet) return;
     bullet.setDepth(1);
     bullet.body.setSize(8, 8);
     bullet.setVelocity(
@@ -71,7 +67,6 @@
   }
 
   update(cursors, spaceKey, time, bullets, mapData) {
-    // Most-recently-pressed held key wins
     let desiredDir = null;
     let bestTime = -1;
     if (cursors.up.isDown    && cursors.up.timeDown    > bestTime) { bestTime = cursors.up.timeDown;    desiredDir = DIR.UP;    }
@@ -92,20 +87,13 @@
       this.setVelocity(0, 0);
     }
 
-    if (spaceKey.isDown) {
-      this.tryShoot(time, bullets);
-    }
-
-    if (this.shieldSprite) {
-      this.shieldSprite.setPosition(this.x, this.y);
-    }
+    if (spaceKey.isDown) this.tryShoot(time, bullets);
+    if (this.shieldSprite) this.shieldSprite.setPosition(this.x, this.y);
   }
 
   _tryPickTarget(mapData, dir) {
-    // Use floor+clamp so physics drift never computes a border or out-of-range tile.
     const col = Phaser.Math.Clamp(Math.floor(this.x / TILE_SIZE), 1, MAP_COLS - 2);
     const row = Phaser.Math.Clamp(Math.floor((this.y - HUD_HEIGHT) / TILE_SIZE), 1, MAP_ROWS - 2);
-
     const nc = col + DIR_VX[dir];
     const nr = row + DIR_VY[dir];
 
@@ -113,7 +101,6 @@
       this.setVelocity(0, 0);
       return;
     }
-
     if (mapData) {
       const cell = mapData[nr][nc];
       if (cell === TILE.STEEL || cell === TILE.WATER || cell === TILE.BRICK) {
@@ -121,11 +108,8 @@
         return;
       }
     }
-
-    // Snap exactly to current tile center before departing
     this.x = col * TILE_SIZE + TILE_SIZE / 2;
     this.y = row * TILE_SIZE + TILE_SIZE / 2 + HUD_HEIGHT;
-
     const world = MapGenerator.tileToWorld(nc, nr);
     this.targetX = world.x;
     this.targetY = world.y;
@@ -136,15 +120,12 @@
     const dx = this.targetX - this.x;
     const dy = this.targetY - this.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
-
     if (dist < 2) {
       this.x = this.targetX;
       this.y = this.targetY;
       this.setVelocity(0, 0);
       this.hasTarget = false;
-      if (desiredDir !== null) {
-        this._tryPickTarget(mapData, desiredDir);
-      }
+      if (desiredDir !== null) this._tryPickTarget(mapData, desiredDir);
     } else {
       this.setVelocity((dx / dist) * this.speed, (dy / dist) * this.speed);
     }
@@ -160,4 +141,3 @@
     super.destroy(fromScene);
   }
 }
-

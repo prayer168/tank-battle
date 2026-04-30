@@ -1,4 +1,4 @@
-﻿class MapGenerator {
+class MapGenerator {
   generate(levelConfig) {
     const { brickDensity, steelDensity } = levelConfig;
     const map = [];
@@ -19,22 +19,17 @@
       }
     }
 
-    // ?? ?拙振?箇??嚗椰銝 5?4 ?潘?蝣箔??雲憭暑?征??    this._clearZone(map, 1, MAP_ROWS - 5, 5, 4);
+    // Player spawn zone: cols 1-5, rows MAP_ROWS-5 to MAP_ROWS-2
+    this._clearZone(map, 1, MAP_ROWS - 5, 5, 4);
 
-    // ?? 撘瑕皜征?敺?璇?冽帖??row = MAP_ROWS-2嚗?蝣箔?摨?臬椰?喟宏??    //    ?芰宏?斤???瘞游?/?嚗?????潛?閬死??靽?嚗??餅?靘摮嚗?    for (let c = 1; c < MAP_COLS - 1; c++) {
-      if (map[MAP_ROWS - 2][c] !== TILE.STEEL) {
-        map[MAP_ROWS - 2][c] = TILE.EMPTY;
-      }
-    }
-
-    // ?? 撘瑕皜征?敺洵鈭??折璈恍?嚗ow = MAP_ROWS-3嚗??踹??拙振敺??寡◤摰撠香
+    // Fully clear the bottom two interior rows (including steel) so the
+    // player can never be pinched between interior walls and the border.
     for (let c = 1; c < MAP_COLS - 1; c++) {
-      if (map[MAP_ROWS - 3][c] !== TILE.STEEL) {
-        map[MAP_ROWS - 3][c] = TILE.EMPTY;
-      }
+      map[MAP_ROWS - 2][c] = TILE.EMPTY;
+      map[MAP_ROWS - 3][c] = TILE.EMPTY;
     }
 
-    // ?? ?萎犖?箇??嚗??其??? 3?2
+    // Enemy spawn zones: three 3x2 areas at the top
     this._clearZone(map, 1, 1, 3, 2);
     this._clearZone(map, Math.floor(MAP_COLS / 2) - 1, 1, 3, 2);
     this._clearZone(map, MAP_COLS - 4, 1, 3, 2);
@@ -50,7 +45,6 @@
     }
   }
 
-  // Returns world-space center of a tile
   static tileToWorld(col, row) {
     return {
       x: col * TILE_SIZE + TILE_SIZE / 2,
@@ -58,7 +52,6 @@
     };
   }
 
-  // Returns tile coords from world position
   static worldToTile(x, y) {
     return {
       col: Math.floor(x / TILE_SIZE),
@@ -66,4 +59,3 @@
     };
   }
 }
-
