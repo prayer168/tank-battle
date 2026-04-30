@@ -66,7 +66,7 @@ class PlayerTank extends Phaser.Physics.Arcade.Sprite {
     Sound.playShoot(true);
   }
 
-  update(cursors, spaceKey, time, bullets, mapData) {
+  update(cursors, spaceKey, time, delta, bullets, mapData) {
     let desiredDir = null;
     let bestTime = -1;
     if (cursors.up.isDown    && cursors.up.timeDown    > bestTime) { bestTime = cursors.up.timeDown;    desiredDir = DIR.UP;    }
@@ -80,11 +80,11 @@ class PlayerTank extends Phaser.Physics.Arcade.Sprite {
     }
 
     if (this.hasTarget) {
-      this._moveToTarget(desiredDir, mapData);
+      this._moveToTarget(desiredDir, mapData, delta);
     } else if (desiredDir !== null) {
       this._tryPickTarget(mapData, desiredDir);
     } else {
-      this.setVelocity(0, 0);
+      this.body.reset(this.x, this.y);
     }
 
     if (spaceKey.isDown) this.tryShoot(time, bullets);
@@ -97,37 +97,44 @@ class PlayerTank extends Phaser.Physics.Arcade.Sprite {
     const nc = col + DIR_VX[dir];
     const nr = row + DIR_VY[dir];
 
+    // Block border and out-of-bounds tiles
     if (nr < 1 || nr >= MAP_ROWS - 1 || nc < 1 || nc >= MAP_COLS - 1) {
-      this.setVelocity(0, 0);
+      this.body.reset(this.x, this.y);
       return;
     }
     if (mapData) {
       const cell = mapData[nr][nc];
       if (cell === TILE.STEEL || cell === TILE.WATER || cell === TILE.BRICK) {
-        this.setVelocity(0, 0);
+        this.body.reset(this.x, this.y);
         return;
       }
     }
-    this.x = col * TILE_SIZE + TILE_SIZE / 2;
-    this.y = row * TILE_SIZE + TILE_SIZE / 2 + HUD_HEIGHT;
+    // Snap to current tile center, then set next tile as target
+    const snapX = col * TILE_SIZE + TILE_SIZE / 2;
+    const snapY = row * TILE_SIZE + TILE_SIZE / 2 + HUD_HEIGHT;
+    this.body.reset(snapX, snapY);
     const world = MapGenerator.tileToWorld(nc, nr);
     this.targetX = world.x;
     this.targetY = world.y;
     this.hasTarget = true;
   }
 
-  _moveToTarget(desiredDir, mapData) {
+  _moveToTarget(desiredDir, mapData, delta) {
     const dx = this.targetX - this.x;
     const dy = this.targetY - this.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
-    if (dist < 2) {
-      this.x = this.targetX;
-      this.y = this.targetY;
-      this.setVelocity(0, 0);
+    const step = this.speed * delta / 1000;
+
+    if (dist <= step + 0.5) {
+      // Arrived — snap exactly to target tile center
+      this.body.reset(this.targetX, this.targetY);
       this.hasTarget = false;
       if (desiredDir !== null) this._tryPickTarget(mapData, desiredDir);
     } else {
-      this.setVelocity((dx / dist) * this.speed, (dy / dist) * this.speed);
+      // Move directly toward target; physics velocity stays 0 (body.reset zeroes it)
+      const newX = this.x + (dx / dist) * step;
+      const newY = this.y + (dy / dist) * step;
+      this.body.reset(newX, newY);
     }
   }
 
