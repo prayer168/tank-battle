@@ -18,6 +18,11 @@
     this.speedTimer = null;
     this.shieldSprite = null;
 
+    // Tile-by-tile movement state
+    this.targetX = x;
+    this.targetY = y;
+    this.hasTarget = false;
+
     this._createShieldSprite(scene);
   }
 
@@ -66,28 +71,28 @@
     Sound.playShoot(true);
   }
 
-  update(cursors, spaceKey, time, bullets) {
-    // Always respond to the most-recently-pressed direction key that is still held.
-    // This avoids JustDown edge-cases and ensures any key press is acted on.
-    let bestDir = null;
+  update(cursors, spaceKey, time, bullets, mapData) {
+    // Determine the most-recently-pressed direction key that is still held
+    let desiredDir = null;
     let bestTime = -1;
-    if (cursors.up.isDown    && cursors.up.timeDown    > bestTime) { bestTime = cursors.up.timeDown;    bestDir = DIR.UP;    }
-    if (cursors.down.isDown  && cursors.down.timeDown  > bestTime) { bestTime = cursors.down.timeDown;  bestDir = DIR.DOWN;  }
-    if (cursors.left.isDown  && cursors.left.timeDown  > bestTime) { bestTime = cursors.left.timeDown;  bestDir = DIR.LEFT;  }
-    if (cursors.right.isDown && cursors.right.timeDown > bestTime) { bestTime = cursors.right.timeDown; bestDir = DIR.RIGHT; }
+    if (cursors.up.isDown    && cursors.up.timeDown    > bestTime) { bestTime = cursors.up.timeDown;    desiredDir = DIR.UP;    }
+    if (cursors.down.isDown  && cursors.down.timeDown  > bestTime) { bestTime = cursors.down.timeDown;  desiredDir = DIR.DOWN;  }
+    if (cursors.left.isDown  && cursors.left.timeDown  > bestTime) { bestTime = cursors.left.timeDown;  desiredDir = DIR.LEFT;  }
+    if (cursors.right.isDown && cursors.right.timeDown > bestTime) { bestTime = cursors.right.timeDown; desiredDir = DIR.RIGHT; }
 
-    if (bestDir !== null) {
-      if (bestDir !== this.direction) {
-        this._snapToGrid(bestDir);
-        this.direction = bestDir;
-      }
+    // Update facing direction immediately on key press
+    if (desiredDir !== null) {
+      this.direction = desiredDir;
       this.setAngle(DIR_ANGLE[this.direction]);
-      this.setVelocity(
-        DIR_VX[this.direction] * this.speed,
-        DIR_VY[this.direction] * this.speed
-      );
+    }
+
+    if (this.hasTarget) {
+      // Continue moving toward current tile target
+      this._moveToTarget(desiredDir, mapData);
+    } else if (desiredDir !== null) {
+      // Attempt to enter the next tile
+      this._tryPickTarget(mapData, desiredDir);
     } else {
-      this.setAngle(DIR_ANGLE[this.direction]);
       this.setVelocity(0, 0);
     }
 
@@ -100,21 +105,55 @@
     }
   }
 
-  _snapToGrid(newDir) {
-    // Use Math.floor so the snap always lands inside the tile the tank is currently
-    // occupying, never jumping forward into an adjacent wall tile.
-    if (newDir === DIR.UP || newDir === DIR.DOWN) {
-      const col = Phaser.Math.Clamp(
-        Math.floor(this.x / TILE_SIZE),
-        1, MAP_COLS - 2
-      );
-      this.x = col * TILE_SIZE + TILE_SIZE / 2;
+  _tryPickTarget(mapData, dir) {
+    // Current tile from world position (tank is at a tile center when hasTarget=false)
+    const col = Math.round((this.x - TILE_SIZE / 2) / TILE_SIZE);
+    const row = Math.round((this.y - HUD_HEIGHT - TILE_SIZE / 2) / TILE_SIZE);
+
+    const nc = col + DIR_VX[dir];
+    const nr = row + DIR_VY[dir];
+
+    // Stay inside interior (border steel walls are handled here too)
+    if (nr < 1 || nr >= MAP_ROWS - 1 || nc < 1 || nc >= MAP_COLS - 1) {
+      this.setVelocity(0, 0);
+      return;
+    }
+
+    // Only enter passable tiles; walls are handled without applying any velocity
+    if (mapData) {
+      const cell = mapData[nr][nc];
+      if (cell === TILE.STEEL || cell === TILE.WATER || cell === TILE.BRICK) {
+        this.setVelocity(0, 0);
+        return;
+      }
+    }
+
+    // Snap exactly to current tile center before departing
+    this.x = col * TILE_SIZE + TILE_SIZE / 2;
+    this.y = row * TILE_SIZE + TILE_SIZE / 2 + HUD_HEIGHT;
+
+    const world = MapGenerator.tileToWorld(nc, nr);
+    this.targetX = world.x;
+    this.targetY = world.y;
+    this.hasTarget = true;
+  }
+
+  _moveToTarget(desiredDir, mapData) {
+    const dx = this.targetX - this.x;
+    const dy = this.targetY - this.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    if (dist < 2) {
+      // Arrived at tile center — snap exactly and chain to next tile
+      this.x = this.targetX;
+      this.y = this.targetY;
+      this.setVelocity(0, 0);
+      this.hasTarget = false;
+      if (desiredDir !== null) {
+        this._tryPickTarget(mapData, desiredDir);
+      }
     } else {
-      const row = Phaser.Math.Clamp(
-        Math.floor((this.y - HUD_HEIGHT) / TILE_SIZE),
-        1, MAP_ROWS - 2
-      );
-      this.y = row * TILE_SIZE + TILE_SIZE / 2 + HUD_HEIGHT;
+      this.setVelocity((dx / dist) * this.speed, (dy / dist) * this.speed);
     }
   }
 

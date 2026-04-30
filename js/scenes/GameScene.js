@@ -440,7 +440,7 @@
   update(time, delta) {
     if (this._gameOver || this._levelDone) return;
     if (this.player && this.player.active) {
-      this.player.update(this.cursors, this.spaceKey, time, this.bullets);
+      this.player.update(this.cursors, this.spaceKey, time, this.bullets, this.mapData);
     }
     this.enemies.getChildren().forEach(e => {
       if (e.active) e.update(time, delta, this.mapData, this.player, this.enemyBullets);
@@ -455,3 +455,4 @@
     });
   }
 }
+
