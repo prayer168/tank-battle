@@ -5,6 +5,10 @@ class PlayerTank extends Phaser.Physics.Arcade.Sprite {
     scene.physics.add.existing(this);
     this.setDepth(1);
     this.body.setSize(26, 26);
+    this.body.allowGravity = false;
+    // Disable physics engine movement — we drive position via tweens
+    this.body.moves = false;
+
     this.direction = DIR.UP;
     this.setAngle(DIR_ANGLE[DIR.UP]);
     this.speed = PLAYER_SPEED;
@@ -14,9 +18,7 @@ class PlayerTank extends Phaser.Physics.Arcade.Sprite {
     this.speedActive = false;
     this.speedTimer = null;
     this.shieldSprite = null;
-    this.targetX = x;
-    this.targetY = y;
-    this.hasTarget = false;
+    this.isMoving = false;
     this._createShieldSprite(scene);
   }
 
@@ -33,7 +35,7 @@ class PlayerTank extends Phaser.Physics.Arcade.Sprite {
     if (this.shieldTimer) this.shieldTimer.remove();
     this.shieldTimer = this.scene.time.delayedCall(duration, () => {
       this.shieldActive = false;
-      this.shieldSprite.setVisible(false);
+      if (this.shieldSprite) this.shieldSprite.setVisible(false);
     });
   }
 
@@ -67,6 +69,7 @@ class PlayerTank extends Phaser.Physics.Arcade.Sprite {
   }
 
   update(cursors, spaceKey, time, delta, bullets, mapData) {
+    // Pick the most-recently-pressed held key
     let desiredDir = null;
     let bestTime = -1;
     if (cursors.up.isDown    && cursors.up.timeDown    > bestTime) { bestTime = cursors.up.timeDown;    desiredDir = DIR.UP;    }
@@ -79,63 +82,70 @@ class PlayerTank extends Phaser.Physics.Arcade.Sprite {
       this.setAngle(DIR_ANGLE[this.direction]);
     }
 
-    if (this.hasTarget) {
-      this._moveToTarget(desiredDir, mapData, delta);
-    } else if (desiredDir !== null) {
-      this._tryPickTarget(mapData, desiredDir);
-    } else {
-      this.body.reset(this.x, this.y);
+    // Only start a new move when the previous tween has finished
+    if (!this.isMoving && desiredDir !== null) {
+      this._tryMove(desiredDir, mapData);
+    }
+
+    // Keep the physics body centred on the sprite every frame
+    // (needed so overlap detection works while the tween is running)
+    if (this.body) {
+      this.body.position.set(
+        this.x - this.body.halfWidth,
+        this.y - this.body.halfHeight
+      );
     }
 
     if (spaceKey.isDown) this.tryShoot(time, bullets);
     if (this.shieldSprite) this.shieldSprite.setPosition(this.x, this.y);
   }
 
-  _tryPickTarget(mapData, dir) {
-    const col = Phaser.Math.Clamp(Math.floor(this.x / TILE_SIZE), 1, MAP_COLS - 2);
-    const row = Phaser.Math.Clamp(Math.floor((this.y - HUD_HEIGHT) / TILE_SIZE), 1, MAP_ROWS - 2);
+  _tryMove(dir, mapData) {
+    // Compute which tile we are currently on
+    const col = Math.floor(this.x / TILE_SIZE);
+    const row = Math.floor((this.y - HUD_HEIGHT) / TILE_SIZE);
     const nc = col + DIR_VX[dir];
     const nr = row + DIR_VY[dir];
 
-    // Block border and out-of-bounds tiles
-    if (nr < 1 || nr >= MAP_ROWS - 1 || nc < 1 || nc >= MAP_COLS - 1) {
-      this.body.reset(this.x, this.y);
-      return;
-    }
+    // Block border tiles and map edges
+    if (nr < 1 || nr >= MAP_ROWS - 1 || nc < 1 || nc >= MAP_COLS - 1) return;
+
+    // Block solid tiles
     if (mapData) {
       const cell = mapData[nr][nc];
-      if (cell === TILE.STEEL || cell === TILE.WATER || cell === TILE.BRICK) {
-        this.body.reset(this.x, this.y);
-        return;
-      }
+      if (cell === TILE.STEEL || cell === TILE.WATER || cell === TILE.BRICK) return;
     }
-    // Snap to current tile center, then set next tile as target
+
+    // Snap sprite to current tile centre before starting the tween
+    // (removes any sub-pixel drift from previous tweens)
     const snapX = col * TILE_SIZE + TILE_SIZE / 2;
     const snapY = row * TILE_SIZE + TILE_SIZE / 2 + HUD_HEIGHT;
-    this.body.reset(snapX, snapY);
-    const world = MapGenerator.tileToWorld(nc, nr);
-    this.targetX = world.x;
-    this.targetY = world.y;
-    this.hasTarget = true;
-  }
+    this.x = snapX;
+    this.y = snapY;
 
-  _moveToTarget(desiredDir, mapData, delta) {
-    const dx = this.targetX - this.x;
-    const dy = this.targetY - this.y;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    const step = this.speed * delta / 1000;
+    const target = MapGenerator.tileToWorld(nc, nr);
+    const duration = TILE_SIZE / this.speed * 1000; // ms to cross one tile
 
-    if (dist <= step + 0.5) {
-      // Arrived — snap exactly to target tile center
-      this.body.reset(this.targetX, this.targetY);
-      this.hasTarget = false;
-      if (desiredDir !== null) this._tryPickTarget(mapData, desiredDir);
-    } else {
-      // Move directly toward target; physics velocity stays 0 (body.reset zeroes it)
-      const newX = this.x + (dx / dist) * step;
-      const newY = this.y + (dy / dist) * step;
-      this.body.reset(newX, newY);
-    }
+    this.isMoving = true;
+    this.scene.tweens.add({
+      targets: this,
+      x: target.x,
+      y: target.y,
+      duration: duration,
+      ease: 'Linear',
+      onComplete: () => {
+        // Hard-snap to exact tile centre on arrival
+        this.x = target.x;
+        this.y = target.y;
+        if (this.body) {
+          this.body.position.set(
+            this.x - this.body.halfWidth,
+            this.y - this.body.halfHeight
+          );
+        }
+        this.isMoving = false;
+      }
+    });
   }
 
   takeDamage() {
@@ -144,6 +154,10 @@ class PlayerTank extends Phaser.Physics.Arcade.Sprite {
   }
 
   destroy(fromScene) {
+    // Stop any in-progress movement tween
+    if (this.scene && this.scene.tweens) {
+      this.scene.tweens.killTweensOf(this);
+    }
     if (this.shieldSprite) this.shieldSprite.destroy();
     super.destroy(fromScene);
   }
