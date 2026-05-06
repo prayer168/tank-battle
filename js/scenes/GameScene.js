@@ -19,6 +19,7 @@ class GameScene extends Phaser.Scene {
       GAME_WIDTH - 2 * TILE_SIZE, GAME_HEIGHT - HUD_HEIGHT - 2 * TILE_SIZE
     );
     this._buildMap();
+    this._buildCommandCenter();
     this._createGroups();
     this._spawnPlayer();
     this._setupCollisions();
@@ -200,6 +201,52 @@ class GameScene extends Phaser.Scene {
       bullet.destroy();
       this._killEnemy(enemy);
     });
+
+    // Any bullet vs command star → game over
+    const hitStar = (bullet) => {
+      if (!this.commandStar || !this.commandStar.active) return;
+      bullet.destroy();
+      this._triggerCommandCenterDestroyed();
+    };
+    this.physics.add.overlap(this.bullets,      this.commandStar, hitStar);
+    this.physics.add.overlap(this.enemyBullets, this.commandStar, hitStar);
+  }
+
+  _buildCommandCenter() {
+    const pos = MapGenerator.tileToWorld(COMMAND_COL, COMMAND_ROW);
+    this.commandStar = this.physics.add.image(pos.x, pos.y, 'star');
+    this.commandStar.setDepth(1);
+    this.commandStar.body.setImmovable(true);
+    this.commandStar.body.moves = false;
+    // Pulsing animation so the star shines
+    this.tweens.add({
+      targets: this.commandStar,
+      scaleX: 1.18, scaleY: 1.18,
+      alpha: 0.75,
+      duration: 750,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.InOut',
+    });
+  }
+
+  _triggerCommandCenterDestroyed() {
+    if (this._gameOver || this._levelDone) return;
+    this._spawnExplosion(this.commandStar.x, this.commandStar.y, true);
+    this.commandStar.destroy();
+    const txt = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 40, '指揮中心淪陷！', {
+      fontSize: '38px', fontFamily: 'Arial Black', color: '#ff2222',
+      stroke: '#000000', strokeThickness: 6,
+    }).setOrigin(0.5).setDepth(20);
+    this.tweens.add({
+      targets: txt,
+      y: txt.y - 30,
+      alpha: 0,
+      duration: 1800,
+      delay: 900,
+      onComplete: () => txt.destroy(),
+    });
+    this._triggerGameOver();
   }
 
   _setupPlayerCollisions() {

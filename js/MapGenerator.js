@@ -39,6 +39,27 @@ class MapGenerator {
     this._clearZone(map, Math.floor(MAP_COLS / 2) - 1, 1, 3, 2);
     this._clearZone(map, MAP_COLS - 4, 1, 3, 2);
 
+    // Command centre: two brick rings added AFTER all clearing so they survive.
+    // Outer ring: 5×5 minus inner 3×3
+    for (let dr = -2; dr <= 2; dr++) {
+      for (let dc = -2; dc <= 2; dc++) {
+        if (Math.abs(dr) <= 1 && Math.abs(dc) <= 1) continue;
+        const r = COMMAND_ROW + dr, c = COMMAND_COL + dc;
+        if (r > 0 && r < MAP_ROWS - 1 && c > 0 && c < MAP_COLS - 1)
+          map[r][c] = TILE.BRICK;
+      }
+    }
+    // Inner ring: 3×3 minus centre
+    for (let dr = -1; dr <= 1; dr++) {
+      for (let dc = -1; dc <= 1; dc++) {
+        if (dr === 0 && dc === 0) continue;   // centre stays EMPTY (star sprite)
+        const r = COMMAND_ROW + dr, c = COMMAND_COL + dc;
+        if (r > 0 && r < MAP_ROWS - 1 && c > 0 && c < MAP_COLS - 1)
+          map[r][c] = TILE.BRICK;
+      }
+    }
+    map[COMMAND_ROW][COMMAND_COL] = TILE.EMPTY;   // guarantee star cell is clear
+
     return map;
   }
 

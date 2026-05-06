@@ -35,3 +35,7 @@ const PLAYER_LIVES = 3;
 const SHIELD_DURATION = 8000;
 const SPEED_DURATION = 6000;
 const POWERUP_SPAWN_INTERVAL = 12000;
+
+// Command centre position (bottom-centre of map)
+const COMMAND_COL = Math.floor(MAP_COLS / 2); // 12
+const COMMAND_ROW = MAP_ROWS - 4;             // 14

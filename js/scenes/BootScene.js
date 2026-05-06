@@ -9,6 +9,7 @@ class BootScene extends Phaser.Scene {
     this._makeShieldFx();
     this._makeExplosion();
     this._makePixel();
+    this._makeStar();
     this.scene.start('MenuScene');
   }
 
@@ -176,5 +177,31 @@ class BootScene extends Phaser.Scene {
     const g = this._g();
     g.fillStyle(0xffffff); g.fillRect(0, 0, 1, 1);
     g.generateTexture('pixel', 1, 1); g.destroy();
+  }
+
+  _makeStar() {
+    const S = TILE_SIZE;
+    const g = this._g();
+    const cx = S / 2, cy = S / 2;
+    const R = S / 2 - 3, ri = R * 0.42;
+    // Glow halo
+    g.fillStyle(0xffaa00, 0.35);
+    g.fillCircle(cx, cy, R + 3);
+    // 5-pointed star (10 alternating outer/inner vertices)
+    const pts = [];
+    for (let i = 0; i < 10; i++) {
+      const a = (i / 5) * Math.PI - Math.PI / 2;
+      const r = (i % 2 === 0) ? R : ri;
+      pts.push({ x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) });
+    }
+    g.fillStyle(0xffee00, 1);
+    g.fillPoints(pts, true);
+    g.lineStyle(2, 0xff9900, 1);
+    g.strokePoints(pts, true);
+    // Inner highlight
+    g.fillStyle(0xffffff, 0.55);
+    g.fillCircle(cx - 1, cy - 2, 4);
+    g.generateTexture('star', S, S);
+    g.destroy();
   }
 }
